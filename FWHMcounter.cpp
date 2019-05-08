@@ -137,16 +137,38 @@ inline void printStatus( int indexi, Mat& statusimg)
 {
 	 
 	char textbuffer[80];
-	Mat firstrowofstatusimg = statusimg(Rect(0, 0, 600, 50));
-	Mat secrowofstatusimg = statusimg(Rect(0, 50, 600, 50));
-	Mat thirdrowofstatusimg = statusimg(Rect(0, 100, 600, 50));
+	//Mat firstrowofstatusimg = statusimg(Rect(0, 0, 600, 50));
+	//Mat secrowofstatusimg = statusimg(Rect(0, 50, 600, 50));
+	//Mat thirdrowofstatusimg = statusimg(Rect(0, 100, 600, 50));
 	Mat fourthrowofstatusimg = statusimg(Rect(0, 150, 600, 50));
-	Mat fifthrowofstatusimg = statusimg(Rect(0, 200, 600, 50));
-	Mat sixthrowofstatusimg = statusimg(Rect(0, 250, 600, 50));
+	//Mat fifthrowofstatusimg = statusimg(Rect(0, 200, 600, 50));
+	//Mat sixthrowofstatusimg = statusimg(Rect(0, 250, 600, 50));
 	
 	sprintf(textbuffer, "Index =  %d", indexi );
 	fourthrowofstatusimg = Mat::zeros(cv::Size(600, 50), CV_64F);
 	putText(statusimg, textbuffer, Point(0, 180), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 3, 1);
+	 
+	imshow("Status", statusimg);
+
+}
+
+inline void printStatusDC(bool bupper, Mat& statusimg)
+{
+	 
+	char textbuffer[80];
+	//Mat firstrowofstatusimg = statusimg(Rect(0, 0, 600, 50));
+	//Mat secrowofstatusimg = statusimg(Rect(0, 50, 600, 50));
+	Mat thirdrowofstatusimg = statusimg(Rect(0, 100, 600, 50));
+	//Mat fourthrowofstatusimg = statusimg(Rect(0, 150, 600, 50));
+	//Mat fifthrowofstatusimg = statusimg(Rect(0, 200, 600, 50));
+	//Mat sixthrowofstatusimg = statusimg(Rect(0, 250, 600, 50));
+	
+	if(bupper==1)
+		sprintf(textbuffer, "Using upper 5 pix as DC" );
+	else
+		sprintf(textbuffer, "Using lower 5 pix as DC" );
+	thirdrowofstatusimg = Mat::zeros(cv::Size(600, 50), CV_64F);
+	putText(statusimg, textbuffer, Point(0, 130), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255, 255), 3, 1);
 	 
 	imshow("Status", statusimg);
 
@@ -168,7 +190,7 @@ int main(int argc, char *argv[])
 	Point minLoc, maxLoc;
 	double minVal, maxVal, DCVal, peak, halfpeak;
 	Scalar meantemp;
-	bool exists[1001];
+	bool exists[1001], bupper=0;
 	for (int indexi = 0; indexi<1001; indexi++)
 	{
 		exists[indexi]=0;
@@ -176,7 +198,7 @@ int main(int argc, char *argv[])
 	int jj, lhshm, rhshm, FWHMpix;
 	cv::FileStorage fs("BscanFFT.xml", cv::FileStorage::READ);
 	std::ofstream outfile("FWHMcount.csv");
-	char stringvar[80];
+	char stringvar[80], studyId[40];
 	Mat statusimg = Mat::zeros(cv::Size(600, 300), CV_64F);
 	
 	bool doneflag = 0, skeypressed = 0, nkeypressed = 0, pkeypressed = 0;
@@ -184,6 +206,10 @@ int main(int argc, char *argv[])
 	int indexi;
 	
 	int key=0;
+	
+	std::cout<<"Type OCT study ID like 012R or 123L and press Enter :";
+	std::cin>>studyId;
+	std::cout<<std::endl<<"Study ID entered as "<<studyId<<" ....reading data..."<<std::endl;
 
 	//fs["camgain"] >> camgain;
 	//fs["camtime"] >> camtime;
@@ -249,9 +275,17 @@ int main(int argc, char *argv[])
 					ascanlin=zvalslin.col(ii);
 					// find the max value
 					minMaxLoc(ascanlin, &minVal, &maxVal, &minLoc, &maxLoc);
-				
-					// DC is taken to be the average of the lower 5 pixels
-					meantemp = mean(ascanlin.rowRange(ROIh-5,ROIh-1));
+					
+					if(bupper==0)
+					{
+						// DC is taken to be the average of the lowermost 5 pixels
+						meantemp = mean(ascanlin.rowRange(ROIh-5,ROIh-1));
+					}
+					else
+					{
+						// DC is taken to be the average of the uppermost 5 pixels
+						meantemp = mean(ascanlin.rowRange(0,4));
+					}
 					DCVal=meantemp[0];	// since we are using only a single channel
 					//debug
 					//std::cout<<DCVal<<std::endl;
@@ -279,10 +313,8 @@ int main(int argc, char *argv[])
 					
 					FWHMpix = rhshm - lhshm;
 					//debug
-					std::cout<<FWHMpix<<std::endl;
-					
-					
-					
+					//std::cout<<FWHMpix<<std::endl;
+					outfile<<studyId<<", "<<indexi<<", "<<ii<<", "<<FWHMpix<<std::endl;
 					
 				}	// end of ascan for loop
 				skeypressed=0;
@@ -319,6 +351,17 @@ int main(int argc, char *argv[])
 				case 'S':
 
 					skeypressed = 1;
+					break;
+					
+				case 'u':
+				case 'U':
+
+					//toggle the upper flag
+					if(bupper==0)
+						bupper=1;
+					else
+						bupper=0;
+					printStatusDC(bupper, statusimg);
 					break;
 
 				case 'n':
