@@ -181,6 +181,24 @@ inline void makeonlypositive(Mat& src, Mat& dst)
 
 }
 
+// the next function saves a Mat m as variablename f by dumping to outfile o, both windows and unix versions
+
+#ifdef __unix__
+inline void savematasdata(std::ofstream& o, char* f, Mat m)
+{
+	// saves a Mat m as variable named f in Matlab m file format
+	o << f << "=";
+	o << m;
+	o << ";" << std::endl;
+}
+
+#else
+inline void savematasdata(cv::FileStorage& o, char* f, Mat m)
+{
+	// saves Mat m by serializing to xml as variable named f
+	o << f << m;
+}
+#endif
 
 
 int main(int argc, char *argv[])
@@ -196,6 +214,7 @@ int main(int argc, char *argv[])
 		exists[indexi]=0;
 	}
 	int jj, lhshm, rhshm, FWHMpix;
+	int ROImid;
 	cv::FileStorage fs("BscanFFT.xml", cv::FileStorage::READ);
 	std::ofstream outfile("FWHMcount.csv");
 	char stringvar[80], studyId[40];
@@ -206,6 +225,15 @@ int main(int argc, char *argv[])
 	int indexi;
 	
 	int key=0;
+	
+#ifdef _WIN64
+	cv::FileStorage ascanoutfile;
+	outfile.open("ascans.xml", cv::FileStorage::WRITE);
+#endif
+
+#ifdef __unix__	
+	std::ofstream ascanoutfile("ascans.m");
+#endif
 	
 	std::cout<<"Type OCT study ID like 012R or 123L and press Enter :";
 	std::cin>>studyId;
@@ -317,6 +345,14 @@ int main(int argc, char *argv[])
 					outfile<<studyId<<", "<<indexi<<", "<<ii<<", "<<FWHMpix<<std::endl;
 					
 				}	// end of ascan for loop
+				
+				// Now save an averaged a-scan across the ROI, and a single a-scan from centre of ROI
+				ROImid = floor(ROIw/2);
+				ascanlin=zvalslin.col(ROImid);
+				sprintf(stringvar, "ascanmid%03d", indexi);
+				savematasdata(ascanoutfile, stringvar, ascanlin);
+
+				
 				skeypressed=0;
 			}	// end of if skeypressed and ROI selected computation block
 			
